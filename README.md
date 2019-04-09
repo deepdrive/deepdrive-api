@@ -3,12 +3,16 @@ Deepdrive API
 
 Python implementation of Deepdrive API used to run agents within the [Deepdrive sim](https://github.com/deepdrive/deepdrive-sim) over the network.
 
-The Deepdrive sim server accepts messages over ZMQ serialized with Apache Arrow, allowing agents to be written in any language that also supports these libs.
+The [server](deepdrive_api/server.py) accepts messages over ZMQ serialized with Apache Arrow, 
+allowing agents to be written in any language and will run locally alongside the simulation (Unreal).
+A reference client implementation in python can be found in [client.py](deepdrive_api/client.py).
 
 To install the package, run: `pip3 install deepdrive-api`
 
 
-## PyPi upload
+## Development
+
+### PyPi upload
 
 ```
 # Build

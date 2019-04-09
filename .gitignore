@@ -1,0 +1,6 @@
+deepdrive_ci/__pycache__
+.vscode
+build
+dist
+*.egg-info
+*.pyc

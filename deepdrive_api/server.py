@@ -1,23 +1,17 @@
 from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
 
-import pkg_resources
-from future.builtins import (str)
+from future.builtins import (dict, input, str)
+import logging as log
 
 import zmq
 import pyarrow
 from gym import spaces
 
-import logs
+import deepdrive_api.constants as c
+import deepdrive_api.methods as m
 
-import config as c
-import api.methods as m
-import sim
-import util.ensure_sim
-import utils
-
-log = logs.get_log(__name__)
-
+log.basicConfig(level=log.INFO)
 
 CONN_STRING = "tcp://*:%s" % c.API_PORT
 
@@ -53,11 +47,17 @@ class Server(object):
     Simple ZMQ / pyarrow server that runs the deepdrive project, communicates
     with Unreal locally via shared mem and localhost.
     """
-    def __init__(self):
+    def __init__(self, sim, is_challenge=False):
         self.socket = None
         self.context = None
         self.env = None
         self.serialization_errors = set()
+
+        # sim is a module reference to deepdrive.sim, i.e.
+        #   https://github.com/deepdrive/deepdrive/tree/e114f9f053afe20d5a1478167d3f3c1f180fd279/sim
+        self.sim = sim
+
+        self.is_challenge = is_challenge
 
     def create_socket(self):
         if self.socket is not None:
@@ -88,8 +88,8 @@ class Server(object):
 
     def dispatch(self):
         """
-        Waits for a message from the client, deserializes, routes to the appropriate method,
-        and sends a serialized response.
+        Waits for a message from the client, deserializes, routes to the
+        appropriate method, and sends a serialized response.
         """
         msg = self.socket.recv()
         if not msg:
@@ -103,7 +103,7 @@ class Server(object):
             log.error('Client sent request with no environment started')
         elif method == m.START:
             self.remove_blacklisted_params(kwargs)
-            self.env = sim.start(**kwargs)
+            self.env = self.sim.start(**kwargs)
         elif method == m.STEP:
             resp = self.env.step(args[0])
         elif method == m.RESET:
@@ -123,7 +123,8 @@ class Server(object):
             log.error('Invalid API method')
         serialized = self.serialize(resp)
         if serialized is None:
-            raise RuntimeError('Could not serialize response. Check above for details')
+            raise RuntimeError('Could not serialize response. '
+                               'Check above for details')
         self.socket.send(serialized.to_buffer())
         return done
 
@@ -148,7 +149,7 @@ class Server(object):
         This will not remove a list or tuple item, but will recursively search through
         lists and tuples for dicts with unserializeable values.
 
-        :param obj: Object from which to remove elements that pyarrow cannot serialize
+        :param x: Object from which to remove elements that pyarrow cannot serialize
         :param msg: The error message returned by pyarrow during serizialization
         :return:
         """
@@ -158,9 +159,11 @@ class Server(object):
                 if value_type in msg:
                     if value_type not in self.serialization_errors:
                         self.serialization_errors.add(value_type)
-                        log.warn('Unserializable type %s Not sending to client!', value_type)
+                        log.warning('Unserializable type %s Not sending to '
+                                    'client!', value_type)
                     x[k] = '[REMOVED!] %s was not serializable on server. ' \
-                           'Avoid sending unserializable data for best performance.' % value_type
+                           'Avoid sending unserializable data for best ' \
+                           'performance.' % value_type
                 if isinstance(v, dict) or isinstance(v, list) or isinstance(v, tuple):
                     # No __iter__ as numpy arrays are too big for this
                     self.remove_unserializeables(v, msg)
@@ -168,17 +171,17 @@ class Server(object):
             for e in x:
                 self.remove_unserializeables(e, msg)
 
-    @staticmethod
-    def remove_blacklisted_params(kwargs):
+    def remove_blacklisted_params(self, kwargs):
         for key in list(kwargs):
             if key in BLACKLIST_PARAMS:
-                log.warning('Removing {key} from sim start args, not relevant to remote clients'
-                            .format(key=key))
+                log.warning('Removing {key} from sim start args, not'
+                            ' relevant to remote clients'.format(key=key))
                 del kwargs[key]
-            if c.IS_CHALLENGE and key in CHALLENGE_BLACKLIST_PARAMS:
+            if self.is_challenge and key in CHALLENGE_BLACKLIST_PARAMS:
                 log.warning('Removing {key} from sim start args, '
                             'blacklisted for challenges. Reason: {reason}.'
-                            .format(key=key, reason=CHALLENGE_BLACKLIST_PARAMS[key]))
+                            .format(key=key,
+                                    reason=CHALLENGE_BLACKLIST_PARAMS[key]))
                 del kwargs[key]
 
     @staticmethod
@@ -196,48 +199,9 @@ class Server(object):
         return resp
 
 
-def check_pyarrow_compatibility():
-    """
-    Different versions of pyarrow on serialization and deserialization ends
-    can cause segmentation faults in Unreal
-    :return: bool indicating whether the versions are the same
-    """
-    uepy_pyarrow_version = util.ensure_sim.get_uepy_pyarrow_version()
-    local_pyarrow_version = pkg_resources.get_distribution('pyarrow').version
-    versions_equal = uepy_pyarrow_version == local_pyarrow_version
-    if not versions_equal:
-        log.warn(r"""
-        
-                                 \\\///
-                                / _  _ \
-                              (| (.)(.) |)
-.---------------------------.OOOo--()--oOOO.---------------------------.
-|                                                                      |
-| Pyarrow version mismatch!                                            |
-|                                                                      |
-| UEPy version: %s                                   |
-| Local version: %s                                  |
-|                                                                      |
-| You may want to correct this if you see segfaults in UnrealEngine or |
-| other unexplained failures.                                          |
-|                                                                      |
-'---------------------------.oooO--------------------------------------'
-                             (   )   Oooo.
-                              \ (    (   )
-                               \_)    ) /
-                                     (_/
-
-""" % (uepy_pyarrow_version.ljust(20), local_pyarrow_version.ljust(20)))
-    # sudo apt-get install boxes
-    # gen cat <msg-file> | boxes -d ian_jones
-    return versions_equal
-
-
-def start():
-    check_pyarrow_compatibility()
-    server = Server()
+def start(sim, sim_path=None, is_challenge=False):
+    from deepdrive_api import utils
+    if sim_path is not None:
+        utils.check_pyarrow_compatibility(sim_path)
+    server = Server(sim, is_challenge)
     server.run()
-
-
-if __name__ == '__main__':
-    start()

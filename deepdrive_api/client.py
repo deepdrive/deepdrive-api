@@ -89,6 +89,9 @@ class Client(object):
         return socket
 
     def step(self, action):
+        if hasattr(action, 'as_gym'):
+            # Legacy support for original agents written within deepdrive repo
+            action = action.as_gym()
         obz, reward, done, info = self._send(m.STEP, args=[action])
         if not obz:
             obz = None
@@ -136,7 +139,7 @@ class Client(object):
         return self._send(m.REWARD_RANGE)
 
 
-def action(steering=0, throttle=0, brake=0, handbrake=0, has_control=True):
+def get_action(steering=0, throttle=0, brake=0, handbrake=0, has_control=True):
     ret = [np.array([steering]),
            np.array([throttle]),
            np.array([brake]),

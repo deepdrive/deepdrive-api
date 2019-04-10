@@ -7,7 +7,7 @@ with open(abspath(join(dirname(__file__), 'README.md')), 'rb') as readme_file:
 
 setup(
     name='deepdrive-api',
-    version='3.0.20190405035157',  # Corresponds with deepdrive-sim version
+    version='3.0.20190410042042',
     description='Deepdrive API used to run agents over the network',
     long_description=__readme__,
     long_description_content_type='text/markdown',
@@ -31,6 +31,7 @@ setup(
         'twine>=1.11.0',
         'pyarrow==0.12.1',
         'pyzmq',
+        'future',
         'gym==0.10.0',
         'numpy>=1.16.1',
         'wheel>=0.31.0'

@@ -20,6 +20,9 @@ To install the package, run: `pip3 install deepdrive-api`
 ### PyPi upload
 
 ```
+# Remove old dist
+trash dist  # sudo apt install trash-cli
+
 # Build
 python setup.py sdist bdist_wheel
 

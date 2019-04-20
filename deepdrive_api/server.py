@@ -44,8 +44,11 @@ CHALLENGE_BLACKLIST_PARAMS = {
 class Server(object):
     """Deepdrive server process that runs on same machine as Unreal Engine.
 
-    Simple ZMQ / pyarrow server that runs the deepdrive project, communicates
-    with Unreal locally via shared mem and localhost.
+    self.sim is a OpenAI gym environment factory which creates a new gym
+    environment on start().
+
+    Simple ZMQ / pyarrow server that runs the deepdrive gym environment locally,
+    which communicates with Unreal locally via shared mem and localhost.
     """
     def __init__(self, sim, is_challenge=False):
         self.socket = None

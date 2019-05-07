@@ -75,6 +75,8 @@ def check_pyarrow_compatibility(sim_path):
                                      (_/
 
 """ % (uepy_pyarrow_version.ljust(20), local_pyarrow_version.ljust(20)))
+    # https://boxes.thomasjensen.com
+    # boxes -l #  list options
     # sudo apt-get install boxes
-    # gen cat <msg-file> | boxes -d ian_jones
+    # cat <msg-file> | boxes -d ian_jones
     return versions_equal

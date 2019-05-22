@@ -12,7 +12,7 @@ This will run locally alongside the simulation (Unreal).
 A reference client implementation in python can be found in 
 [client.py](deepdrive_api/client.py).
 
-To install the package, run: `pip3 install deepdrive-api`
+To install the package, run `pip3 install deepdrive-api`
 
 
 ## Development

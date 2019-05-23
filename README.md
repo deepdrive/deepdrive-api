@@ -40,4 +40,5 @@ twine upload dist/*
 
 ## Legal
 
-Copyright &copy; 2019, [Deepdrive](https://deepdrive.io/). Licensed under the MIT License, see the file [LICENSE](https://github.com/deepdrive/deepdrive-ci/blob/master/LICENSE) for details.
+Copyright &copy; 2019, [Deepdrive](https://deepdrive.io/). 
+Licensed under the MIT License, see the file [LICENSE](https://github.com/deepdrive/deepdrive-ci/blob/master/LICENSE) for details.

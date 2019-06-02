@@ -50,17 +50,27 @@ class Server(object):
     Simple ZMQ / pyarrow server that runs the deepdrive gym environment locally,
     which communicates with Unreal locally via shared mem and localhost.
     """
-    def __init__(self, sim, is_challenge=False):
+    def __init__(self, sim, sim_args:dict=None):
+        """
+        :param sim: sim is a module reference to deepdrive.sim, i.e.
+            https://github.com/deepdrive/deepdrive/tree/e114f9f053afe20d5a1478167d3f3c1f180fd279/sim
+            Yes, this is a circular runtime reference and does not allow
+            servers to be written in other languages, but I wanted to
+            keep the client and server implementations together so client
+            implementations in other languages would have be able to reference
+            everything here in one place.
+        :param sim: Sim args configured on the server side. This precludes
+            clients from configuring the environment for situations where
+            some standardized sim is expected, i.e. leaderboard evals,
+            challenges, etc...
+        """
+        self.sim = sim
+        self.sim_args = sim_args
+
         self.socket = None
         self.context = None
         self.env = None
         self.serialization_errors = set()
-
-        # sim is a module reference to deepdrive.sim, i.e.
-        #   https://github.com/deepdrive/deepdrive/tree/e114f9f053afe20d5a1478167d3f3c1f180fd279/sim
-        self.sim = sim
-
-        self.is_challenge = is_challenge
 
     def create_socket(self):
         if self.socket is not None:
@@ -105,8 +115,7 @@ class Server(object):
             resp = 'No environment started, please send start request'
             log.error('Client sent request with no environment started')
         elif method == m.START:
-            self.remove_blacklisted_params(kwargs)
-            self.env = self.sim.start(**kwargs)
+            self.handle_start_sim_request(kwargs)
         elif method == m.STEP:
             resp = self.env.step(args[0])
         elif method == m.RESET:
@@ -130,6 +139,14 @@ class Server(object):
                                'Check above for details')
         self.socket.send(serialized.to_buffer())
         return done
+
+    def handle_start_sim_request(self, kwargs):
+        if self.sim_args is not None:
+            sim_args = self.sim_args
+        else:
+            sim_args = kwargs
+        self.remove_blacklisted_params(kwargs)
+        self.env = self.sim.start(**sim_args)
 
     def serialize(self, resp):
         serialized = None
@@ -174,17 +191,12 @@ class Server(object):
             for e in x:
                 self.remove_unserializeables(e, msg)
 
-    def remove_blacklisted_params(self, kwargs):
+    @staticmethod
+    def remove_blacklisted_params(kwargs):
         for key in list(kwargs):
             if key in BLACKLIST_PARAMS:
                 log.warning('Removing {key} from sim start args, not'
                             ' relevant to remote clients'.format(key=key))
-                del kwargs[key]
-            if self.is_challenge and key in CHALLENGE_BLACKLIST_PARAMS:
-                log.warning('Removing {key} from sim start args, '
-                            'blacklisted for challenges. Reason: {reason}.'
-                            .format(key=key,
-                                    reason=CHALLENGE_BLACKLIST_PARAMS[key]))
                 del kwargs[key]
 
     @staticmethod
@@ -202,9 +214,9 @@ class Server(object):
         return resp
 
 
-def start(sim, sim_path=None, is_challenge=False):
+def start(sim, sim_path=None, sim_args=None):
     from deepdrive_api import utils
     if sim_path is not None:
         utils.check_pyarrow_compatibility(sim_path)
-    server = Server(sim, is_challenge)
+    server = Server(sim, sim_args)
     server.run()

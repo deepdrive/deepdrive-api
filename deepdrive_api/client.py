@@ -84,7 +84,7 @@ class Client(object):
         # socket.RCVTIMEO = c.API_TIMEOUT_MS
         # socket.SNDTIMEO = c.API_TIMEOUT_MS
 
-        socket.connect("tcp://localhost:%s" % c.API_PORT)
+        socket.connect("tcp://%s:%s" % (c.SIM_HOST, c.API_PORT))
         self.socket = socket
         return socket
 

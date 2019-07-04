@@ -1,3 +1,5 @@
+import os
+
 DEFAULT_CAM = dict(name='My cam!',
                    field_of_view=60,
                    capture_width=227,
@@ -6,3 +8,4 @@ DEFAULT_CAM = dict(name='My cam!',
                    relative_rotation=[0.0, 0.0, 0.0])  # roll, pitch, yaw in degrees
 
 API_PORT = 5557
+SIM_HOST = os.environ.get('DEEPDRIVE_SIM_HOST', 'localhost')

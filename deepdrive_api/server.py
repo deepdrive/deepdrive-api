@@ -233,7 +233,7 @@ class Server(object):
         return resp
 
 
-def start(sim, sim_path=None, sim_args=None):
+def start(sim, sim_path=None, sim_args: dict = None):
     from deepdrive_api import utils
     if sim_path is not None:
         utils.check_pyarrow_compatibility(sim_path)

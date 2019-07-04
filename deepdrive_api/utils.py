@@ -1,14 +1,14 @@
 from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
 
-import logging as log
 import os
 import stat
 
 import pkg_resources
 from deepdrive_api.run_command import run_command
+from deepdrive_api import logs
 
-log.basicConfig(level=log.INFO)
+log = logs.get_log(__name__)
 
 
 def get_uepy_path(sim_path):

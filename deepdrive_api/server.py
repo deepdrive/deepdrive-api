@@ -5,7 +5,6 @@ import json
 import time
 
 from future.builtins import (dict, input, str)
-import logging as log
 
 import zmq
 import pyarrow
@@ -13,8 +12,9 @@ from gym import spaces
 
 import deepdrive_api.constants as c
 import deepdrive_api.methods as m
+from deepdrive_api import logs
 
-log.basicConfig(level=log.INFO)
+log = logs.get_log(__name__)
 
 CONN_STRING = "tcp://*:%s" % c.API_PORT
 

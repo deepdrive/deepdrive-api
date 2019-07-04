@@ -1,8 +1,5 @@
 from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
-
-import logging as log
-
 import numpy as np
 import zmq
 import pyarrow
@@ -10,9 +7,10 @@ from gym import spaces
 
 import deepdrive_api.methods as m
 import deepdrive_api.constants as c
+from deepdrive_api import logs
 
 
-log.basicConfig(level=log.INFO)
+log = logs.get_log(__name__)
 
 
 def deserialize_space(resp):

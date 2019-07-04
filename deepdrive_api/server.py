@@ -163,7 +163,7 @@ class Server(object):
             sim_args = kwargs
             ret = 'Started remotely configured server'
         self.remove_blacklisted_params(kwargs)
-        self.env = self.sim.start(**(sim_args.to_dict()))
+        self.env = self.sim.start(**sim_args)
         return ret
 
     def serialize(self, resp):

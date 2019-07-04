@@ -14,6 +14,9 @@ A reference client implementation in python can be found in
 
 To install the package, run `pip3 install deepdrive-api`
 
+## Example usage
+
+https://github.com/crizcraig/forward-agent
 
 ## Development
 

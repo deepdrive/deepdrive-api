@@ -82,7 +82,10 @@ class Client(object):
         # socket.RCVTIMEO = c.API_TIMEOUT_MS
         # socket.SNDTIMEO = c.API_TIMEOUT_MS
 
-        socket.connect("tcp://%s:%s" % (c.SIM_HOST, c.API_PORT))
+        connection_str = 'tcp://%s:%s' % (c.SIM_HOST, c.API_PORT)
+        log.info('Deepdrive API client connecting to %s' % connection_str)
+
+        socket.connect(connection_str)
         self.socket = socket
         return socket
 

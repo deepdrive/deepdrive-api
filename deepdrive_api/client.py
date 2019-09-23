@@ -117,7 +117,10 @@ class Client(object):
 
     def close(self):
         self._send(m.CLOSE)
-        self.socket.close()
+        try:
+            self.socket.close()
+        except Exception as e:
+            log.debug('Caught exception closing socket')
 
     @property
     def action_space(self):

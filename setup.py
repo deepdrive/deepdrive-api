@@ -7,7 +7,7 @@ with open(abspath(join(dirname(__file__), 'README.md')), 'rb') as readme_file:
 
 setup(
     name='deepdrive-api',
-    version='3.0.20190923222442',
+    version='3.0.20190923222443',
     description='Deepdrive API used to run agents over the network',
     long_description=__readme__,
     long_description_content_type='text/markdown',

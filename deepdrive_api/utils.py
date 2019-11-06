@@ -3,6 +3,7 @@ from __future__ import (absolute_import, division,
 
 import os
 import stat
+import sys
 
 import pkg_resources
 from deepdrive_api.run_command import run_command
@@ -12,9 +13,15 @@ log = logs.get_log(__name__)
 
 
 def get_uepy_path(sim_path):
-    ret = os.path.join(
-        sim_path,
-        'Engine/Plugins/UnrealEnginePython/EmbeddedPython/Linux/bin/python3')
+    if os.name == 'nt':
+        # TODO Set this
+        pass
+    elif sys.platform == 'darwin':
+        raise NotImplementedError('Mac not supported')
+    else:
+        ret = os.path.join(
+            sim_path,
+            'Engine/Plugins/UnrealEnginePython/EmbeddedPython/Linux/bin/python3')
     return ret
 
 

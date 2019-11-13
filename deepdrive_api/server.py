@@ -159,7 +159,9 @@ class Server(object):
         if self.sim_args is not None:
             sim_args = self.sim_args
             ret = 'Started locally configured server'
-            if kwargs['path_follower'] and sim_args['map'] != '':
+            if 'path_follower' in kwargs and \
+                    kwargs['path_follower'] and 'map' in kwargs and \
+                    sim_args['map'] != '':
                 # Hack to deal with release / request bug in sim on new maps
                 sim_args['path_follower'] = kwargs['path_follower']
         else:

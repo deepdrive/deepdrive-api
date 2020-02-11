@@ -53,7 +53,7 @@ class Server(object):
     Simple ZMQ / pyarrow server that runs the deepdrive gym environment locally,
     which communicates with Unreal locally via shared mem and localhost.
     """
-    def __init__(self, sim, sim_args: dict = None):
+    def __init__(self, sim, json_mode: bool = False, sim_args: dict = None):
         """
         :param sim: sim is a module reference to deepdrive.sim, i.e.
             https://github.com/deepdrive/deepdrive/tree/e114f9f053afe20d5a1478167d3f3c1f180fd279/sim
@@ -62,6 +62,8 @@ class Server(object):
             keep the client and server implementations together so client
             implementations in other languages would have be able to reference
             everything here in one place.
+        :param json_mode: Allows sending / receiving all data in json to avoid
+            dependency on pyarrow. Sensor data will be omitted in this case.
         :param sim: Sim args configured on the server side. This precludes
             clients from configuring the environment for situations where
             some standardized sim is expected, i.e. leaderboard evals,
@@ -69,6 +71,7 @@ class Server(object):
         """
         self.sim = sim
         self.sim_args = sim_args
+        self.json_mode = json_mode
 
         self.socket = None
         self.context = None
@@ -110,11 +113,18 @@ class Server(object):
         Waits for a message from the client, deserializes, routes to the
         appropriate method, and sends a serialized response.
         """
+
         msg = self.socket.recv()
         if not msg:
             log.error('Received empty message, skipping')
             return
-        method, args, kwargs = pyarrow.deserialize(msg)
+
+        if self.json_mode:
+            msg = json.loads(msg.decode())
+            method, args, kwargs = msg['method'], msg['args'], msg['kwargs']
+        else:
+            method, args, kwargs = pyarrow.deserialize(msg)
+
         done = False
         resp = None
 
@@ -238,9 +248,9 @@ class Server(object):
         return resp
 
 
-def start(sim, sim_path=None, sim_args: dict = None):
+def start(sim, json_mode=False, sim_path=None, sim_args: dict = None):
     from deepdrive_api import utils
     if sim_path is not None:
         utils.check_pyarrow_compatibility(sim_path)
-    server = Server(sim, sim_args)
+    server = Server(sim=sim, json_mode=json_mode, sim_args=sim_args)
     server.run()

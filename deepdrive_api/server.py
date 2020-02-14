@@ -113,16 +113,17 @@ class Server(object):
         Waits for a message from the client, deserializes, routes to the
         appropriate method, and sends a serialized response.
         """
-
-        msg = self.socket.recv()
-        if not msg:
-            log.error('Received empty message, skipping')
-            return
-
         if self.json_mode:
-            msg = json.loads(msg.decode())
+            msg = self.socket.recv_json()
+            if not msg:
+                log.error('Received empty message, skipping')
+                return
             method, args, kwargs = msg['method'], msg['args'], msg['kwargs']
         else:
+            msg = self.socket.recv()
+            if not msg:
+                log.error('Received empty message, skipping')
+                return
             method, args, kwargs = pyarrow.deserialize(msg)
 
         done = False

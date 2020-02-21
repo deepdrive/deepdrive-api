@@ -4,6 +4,7 @@ from __future__ import (absolute_import, division,
 import json
 import time
 
+from deepdrive_api.client import get_action
 from future.builtins import (dict, input, str)
 
 import zmq
@@ -127,7 +128,6 @@ class Server(object):
             method, args, kwargs = pyarrow.deserialize(msg)
 
         done = False
-        resp = None
 
         if self.env is None and method != m.START:
             resp = 'No environment started, please send start request'
@@ -145,9 +145,13 @@ class Server(object):
         elif method == m.START:
             resp = self.handle_start_sim_request(kwargs)
         elif method == m.STEP:
-            resp = self.env.step(args[0])
+            if self.json_mode:
+                action = get_action(**kwargs)
+            else:
+                action = args[0]
+            resp = self.env.step(action)
         elif method == m.RESET:
-            resp = self.env.reset()
+            resp = dict(reset_response=self.env.reset())
         elif method == m.ACTION_SPACE or method == m.OBSERVATION_SPACE:
             resp = self.serialize_space(self.env.action_space)
         elif method == m.REWARD_RANGE:
@@ -163,13 +167,16 @@ class Server(object):
         if serialized is None:
             raise RuntimeError('Could not serialize response. '
                                'Check above for details')
-        self.socket.send(serialized.to_buffer())
+        if self.json_mode:
+            self.socket.send_json(serialized)
+        else:
+            self.socket.send(serialized.to_buffer())
         return done
 
     def handle_start_sim_request(self, kwargs):
         if self.sim_args is not None:
             sim_args = self.sim_args
-            ret = 'Started locally configured server'
+            server_type = 'locally_configured'
             if 'path_follower' in kwargs and \
                     kwargs['path_follower'] and 'map' in kwargs and \
                     sim_args['map'] != '':
@@ -177,12 +184,84 @@ class Server(object):
                 sim_args['path_follower'] = kwargs['path_follower']
         else:
             sim_args = kwargs
-            ret = 'Started remotely configured server'
+            server_type = 'remotely_configured'
         self.remove_blacklisted_params(kwargs)
         self.env = self.sim.start(**sim_args)
+        ret = dict(server_started=dict(type=server_type))
         return ret
 
     def serialize(self, resp):
+        if self.json_mode:
+            # TODO: Recursively tolist everything, numba?
+            #
+            obs, reward, done, info = resp
+
+            if obs:
+                obs = self.get_filtered_observation(obs)
+            else:
+                obs = None
+            resp = dict(
+                observation=obs,
+                reward=reward,
+                done=done,
+                info=info,
+            )
+
+            ret = simplejson.dumps(resp, ignore_nan=True)
+        else:
+            ret = self.serialize_pyarrow(resp)
+        return ret
+
+    @staticmethod
+    def get_filtered_observation(obs):
+        coll = obs['last_collision']
+        filtered = dict(
+            accerlation=obs['acceleration'].tolist(),
+            angular_acceleration=obs['angular_acceleration'].tolist(),
+            angular_velocity=obs['angular_velocity'].tolist(),
+            brake=obs['brake'],
+            # Skipping cameras for now (base64??)
+            capture_timestamp=obs['capture_timestamp'],
+            dimension=obs['dimension'].tolist(),
+            distance_along_route=obs['distance_along_route'],
+            distance_to_center_of_lane=obs['distance_to_center_of_lane'],
+            distance_to_next_agent=obs['distance_to_next_agent'],
+            distance_to_next_opposing_agent=obs[
+                'distance_to_next_opposing_agent'],
+            distance_to_prev_agent=obs['distance_to_prev_agent'],
+            episode_return=obs['episode_return'],
+            forward_vector=obs['forward_vector'].tolist(),
+            gym_action=obs['gym_action'],
+            gym_done=obs['gym_done'],
+            gym_reward=obs['gym_reward'],
+            handbrake=obs['handbrake'],
+            is_game_driving=obs['is_game_driving'],
+            is_passing=obs['is_passing'],
+            is_resetting=obs['is_resetting'],
+            lap_number=obs['lap_number'],
+            last_collision=dict(
+                collidee_velocity=coll['collidee_velocity'].tolist(),
+                collision_location=coll['collision_normal'].tolist(),
+                collision_normal=coll['collision_normal'].tolist(),
+                time_since_last_collision=coll['time_since_last_collision'],
+                time_stamp=coll['time_stamp'],
+                time_utc=coll['time_utc'],
+            ),
+            position=obs['position'].tolist(),
+            right_vector=obs['right_vector'].tolist(),
+            rotation=obs['rotation'].tolist(),
+            route_length=obs['route_length'],
+            scenario_finished=obs['scenario_finished'],
+            speed=obs['speed'],
+            steering=obs['steering'],
+            throttle=obs['throttle'],
+            up_vector=obs['up_vector'].tolist(),
+            velocity=obs['velocity'].tolist(),
+            world=obs['world'],
+        )
+        return filtered
+
+    def serialize_pyarrow(self, resp):
         serialized = None
         while serialized is None:
             try:
@@ -247,6 +326,7 @@ class Server(object):
             raise RuntimeError('Space of type "%s" value "%r" not supported'
                                % (str(space_type), space))
         return resp
+
 
 
 def start(sim, json_mode=False, sim_path=None, sim_args: dict = None):

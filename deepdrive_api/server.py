@@ -2,6 +2,8 @@ from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
 
 import json
+
+import simplejson
 import time
 
 from deepdrive_api.client import get_action

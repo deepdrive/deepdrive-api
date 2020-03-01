@@ -135,7 +135,8 @@ class Server(object):
             resp = 'No environment started, please send start request'
             log.error('Client sent request with no environment started')
         elif method == m.CLOSE:
-            resp = self.env.close()
+            self.env.close()
+            resp = dict(closed_sim=True)
             done = True
         elif self.env is not None and self.env.unwrapped.should_close:
             if self.should_close_time == 0:

@@ -170,7 +170,7 @@ class Server(object):
             raise RuntimeError('Could not serialize response. '
                                'Check above for details')
         if self.json_mode:
-            self.socket.send_json(serialized)
+            self.socket.send_string(serialized)
         else:
             self.socket.send(serialized.to_buffer())
         return done
@@ -194,21 +194,6 @@ class Server(object):
 
     def serialize(self, resp):
         if self.json_mode:
-            # TODO: Recursively tolist everything, numba?
-            #
-            obs, reward, done, info = resp
-
-            if obs:
-                obs = self.get_filtered_observation(obs)
-            else:
-                obs = None
-            resp = dict(
-                observation=obs,
-                reward=reward,
-                done=done,
-                info=info,
-            )
-
             ret = simplejson.dumps(resp, ignore_nan=True)
         else:
             ret = self.serialize_pyarrow(resp)

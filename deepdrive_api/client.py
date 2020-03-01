@@ -53,13 +53,18 @@ class Client(object):
         self.last_obz = None
         self.create_socket()
         self.should_render = kwargs.get('client_render', False)
+        self.is_open = True
         kwargs['cameras'] = kwargs.get('cameras', [c.DEFAULT_CAM])
         log.info('Waiting for sim to start on server...')
         # TODO: Fix connecting to an open sim
         self._send(m.START, kwargs=kwargs)
+        self.is_open = True
         log.info('===========> Deepdrive sim started')
 
     def _send(self, method, args=None, kwargs=None):
+        if method != m.START and not self.is_open:
+            log.warning('Not sending, env is closed')
+            return None
         args = args or []
         kwargs = kwargs or {}
         try:
@@ -93,7 +98,10 @@ class Client(object):
         if hasattr(action, 'as_gym'):
             # Legacy support for original agents written within deepdrive repo
             action = action.as_gym()
-        obz, reward, done, info = self._send(m.STEP, args=[action])
+        ret = self._send(m.STEP, args=[action])
+        obz, reward, done, info = ret
+        if info.get('closed', False):
+            self.handle_closed()
         if not obz:
             obz = None
         self.last_obz = obz
@@ -102,7 +110,11 @@ class Client(object):
         return obz, reward, done, info
 
     def reset(self):
-        return self._send(m.RESET)
+        if self.is_open:
+            return self._send(m.RESET)
+        else:
+            log.warning('Env closed, not resetting')
+            return None
 
     def render(self):
         """
@@ -117,6 +129,10 @@ class Client(object):
 
     def close(self):
         self._send(m.CLOSE)
+        self.handle_closed()
+
+    def handle_closed(self):
+        self.is_open = False
         try:
             self.socket.close()
         except Exception as e:

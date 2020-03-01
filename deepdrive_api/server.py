@@ -130,13 +130,14 @@ class Server(object):
             method, args, kwargs = pyarrow.deserialize(msg)
 
         done = False
+        close_resp = dict(closed_sim=True)
 
         if self.env is None and method != m.START:
             resp = 'No environment started, please send start request'
             log.error('Client sent request with no environment started')
         elif method == m.CLOSE:
             self.env.close()
-            resp = dict(closed_sim=True)
+            resp = close_resp
             done = True
         elif self.env is not None and self.env.unwrapped.should_close:
             if self.should_close_time == 0:
@@ -144,7 +145,14 @@ class Server(object):
             elif time.time() > self.should_close_time:
                 self.env.close()
                 done = True
-            resp = 'Simulation closing'
+            if method == m.STEP:
+                obs, reward, done, info = None, 0, True, {'closed': True}
+                if self.json_mode:
+                    resp = self.get_json_step_response(obs, reward, done, info)
+                else:
+                    resp = obs, reward, done, info
+            else:
+                resp = close_resp
         elif method == m.START:
             resp = self.handle_start_sim_request(kwargs)
         elif method == m.STEP:
@@ -184,12 +192,17 @@ class Server(object):
                 obs = self.get_filtered_observation(obs)
             else:
                 obs = None
-            resp = dict(
-                observation=obs,
-                reward=reward,
-                done=done,
-                info=info,
-            )
+            resp = self.get_json_step_response(obs, reward, done, info)
+        return resp
+
+    @staticmethod
+    def get_json_step_response(obs, reward, done, info):
+        resp = dict(
+            observation=obs,
+            reward=reward,
+            done=done,
+            info=info,
+        )
         return resp
 
     def handle_start_sim_request(self, kwargs):

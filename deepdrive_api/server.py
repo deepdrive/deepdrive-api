@@ -152,7 +152,7 @@ class Server(object):
                 action = get_action(**kwargs)
             else:
                 action = args[0]
-            resp = self.env.step(action)
+            resp = self.get_step_response(action)
         elif method == m.RESET:
             resp = dict(reset_response=self.env.reset())
         elif method == m.ACTION_SPACE or method == m.OBSERVATION_SPACE:
@@ -175,6 +175,22 @@ class Server(object):
         else:
             self.socket.send(serialized.to_buffer())
         return done
+
+    def get_step_response(self, action):
+        resp = self.env.step(action)
+        if self.json_mode:
+            obs, reward, done, info = resp
+            if obs:
+                obs = self.get_filtered_observation(obs)
+            else:
+                obs = None
+            resp = dict(
+                observation=obs,
+                reward=reward,
+                done=done,
+                info=info,
+            )
+        return resp
 
     def handle_start_sim_request(self, kwargs):
         if self.sim_args is not None:

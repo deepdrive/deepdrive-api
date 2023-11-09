@@ -29,7 +29,7 @@ setup(
     install_requires=[
         'setuptools>=38.6.0',
         'twine>=1.11.0',
-        'pyarrow==0.12.1',
+        'pyarrow==14.0.1',
         'pyzmq',
         'future',
         'gym==0.10.0',
